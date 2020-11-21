@@ -9,8 +9,6 @@ import gaugelib
 
 
 win = tk.Tk()
-a5 = PhotoImage(file= '..\ATS\scripts\Boat\g1.png')
-win.tk.call('wm', 'iconphoto', win._w, a5)
 win.title("ATS Version 2.0")
 win.geometry("800x400+0+0")
 win.resizable(width=True, height=True)
