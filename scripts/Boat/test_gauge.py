@@ -7,10 +7,9 @@ import time
 import random
 import gaugelib
 
-
 win = tk.Tk()
 win.title("ATS Version 2.0")
-win.geometry("800x400+0+0")
+win.geometry("800x500+0+0")
 win.resizable(width=True, height=True)
 win.configure(bg='black')
 g_value=0
@@ -26,6 +25,8 @@ def read_every_second():
     p3.set_value(int(g_value))
     g_value=random.randint(0,100)
     p4.set_value(int(g_value))
+    g_value=random.randint(0,100)
+    p5.set_value(int(g_value))
     x+=1    
     if x>100:
 #        graph1.draw_axes()
@@ -68,5 +69,13 @@ p4 = gaugelib.DrawGauge3(
     unit = "Humid %",bg_sel = 2)
 p4.pack()
 
+p5 = gaugelib.DrawGauge2(
+    win,
+    max_value=100.0,
+    min_value= 0.0,
+    size=200,
+    bg_col='black',
+    unit = "Humid %",bg_sel = 2)
+p5.pack()
 read_every_second()
 mainloop()
