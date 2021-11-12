@@ -1,2 +1,2 @@
 # ATS
-Automatic Trailer System
+Automated Trailering Systems
