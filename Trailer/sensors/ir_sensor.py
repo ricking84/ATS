@@ -1,31 +1,34 @@
 import RPi.GPIO as GPIO
 import time
-GPIO.setmode(GPIO.BCM)
 
-ECHO = 24
-    
-print('Distance Measurement In Progress')
 
-GPIO.setup(ECHO,GPIO.IN)
-try:
-    while True:
+def ir_sensor():
+    GPIO.setmode(GPIO.BCM)
 
-        while GPIO.input(ECHO)==0:
-          pulse_start = time.time()
-          
+    ECHO = 24
 
-        while GPIO.input(ECHO)==1:
-          pulse_end = time.time()
+    print('Distance Measurement In Progress')
 
-        pulse_duration = pulse_end - pulse_start
+    GPIO.setup(ECHO, GPIO.IN)
+    try:
+        while True:
 
-        distance = pulse_duration * 17150
+            while GPIO.input(ECHO) == 0:
+                pulse_start = time.time()
 
-        distance = round(distance, 2)
+            while GPIO.input(ECHO) == 1:
+                pulse_end = time.time()
 
-        print("Distance:",distance,"cm")
+            pulse_duration = pulse_end - pulse_start
 
-except KeyboardInterrupt: # If there is a KeyboardInterrupt (when you press ctrl+c), exit the program and cleanup
+            distance = pulse_duration * 17150
 
-    print("Cleaning up!")
-    GPIO.cleanup()
+            distance = round(distance, 2)
+
+            print("Distance:", distance, "cm")
+
+    # If there is a KeyboardInterrupt (when you press ctrl+c), exit the program and cleanup
+    except KeyboardInterrupt:
+
+        print("Cleaning up!")
+        GPIO.cleanup()
