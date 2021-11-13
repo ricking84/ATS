@@ -1,7 +1,6 @@
 import RPi.GPIO as GPIO
 import time
 
-
 def ir_sensor():
     GPIO.setmode(GPIO.BCM)
 

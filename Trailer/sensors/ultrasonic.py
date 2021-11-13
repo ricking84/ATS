@@ -1,7 +1,8 @@
 import RPi.GPIO as GPIO
 import time
 
-class Ultrasonic:
+
+class ultrasonic:
     GPIO.setmode(GPIO.BCM)
     SLEEPTIME = .1
 
@@ -19,7 +20,7 @@ class Ultrasonic:
 
     # Button Sensor Setup
     BUTTON = 25
-    GPIO.setup(BUTTON, GPIO.IN, pull_up_down = GPIO.PUD_DOWN)
+    GPIO.setup(BUTTON, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
 
     # Float switch setup
     FLOAT = 16
@@ -27,11 +28,12 @@ class Ultrasonic:
 
     try:
         while True:
-        # if GPIO.input(BUTTON) == 1:
-    # Float switch read out
+            # if GPIO.input(BUTTON) == 1:
+            # Float switch read out
             if GPIO.input(FLOAT) == 1:
                 print("Trailer in water")
-            else: print("Trailer not in water yet, please wait")
+            else:
+                print("Trailer not in water yet, please wait")
 
     # Left Ultrasonic sensor read out
             print('Distance Measurement In Progress')
@@ -48,7 +50,7 @@ class Ultrasonic:
                 pulse_end_l = time.time()
 
             pulse_duration_l = pulse_end_l - pulse_start_l
-            distance_l = round(pulse_duration_l * 17150,2)
+            distance_l = round(pulse_duration_l * 17150, 2)
 
             print("Distance Left:", distance_l, "cm")
 
@@ -66,19 +68,19 @@ class Ultrasonic:
                 pulse_end_r = time.time()
 
             pulse_duration_r = pulse_end_r - pulse_start_r
-            distance_r = round(pulse_duration_r * 17150,2)
+            distance_r = round(pulse_duration_r * 17150, 2)
 
             print("Distance Right:", distance_r, "cm")
 
             time.sleep(SLEEPTIME)
 
     # If there is a KeyboardInterrupt (when you press ctrl+c), exit the program and cleanup
-    except KeyboardInterrupt: # If CTRL+C is pressed, exit cleanly:
+    except KeyboardInterrupt:  # If CTRL+C is pressed, exit cleanly:
     print("Keyboard interrupt")
 
     except:
-    print("some error") 
+    print("some error")
 
     finally:
-    print("clean up") 
-    GPIO.cleanup() # cleanup all GPIO 
+    print("clean up")
+    GPIO.cleanup()  # cleanup all GPIO
