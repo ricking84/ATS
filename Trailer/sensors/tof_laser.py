@@ -3,7 +3,6 @@ import board
 import busio
 import adafruit_vl53l0x
 
-
 def tof_laser():
     # Initialize I2C bus and sensor.
     i2c = busio.I2C(board.SCL, board.SDA)
@@ -19,9 +18,7 @@ def tof_laser():
     # The default timing budget is 33ms, a good compromise of speed and accuracy.
 
     # Main loop will read the range and print it every second.
-    while True:
-        print("Range: {0}".format(vl53.range))
-        return vl53.range
-
-
-tof_laser()
+    # while True:
+        # print("Range: {0}".format(vl53.range))
+    
+    return vl53.range
