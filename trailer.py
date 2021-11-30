@@ -3,6 +3,7 @@ from time import sleep
 import sys
 import os
 from Trailer.sensors.tof_laser import tof_laser
+from Trailer.bluetooth.bluetooth_server import bluetooth
 #from Trailer.sensors.float import float
 #from Trailer.sensors.button import button
 #from Trailer.sensors.ir_sensor import ir_sensor
