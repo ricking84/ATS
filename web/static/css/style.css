@@ -168,6 +168,26 @@ body {
 }
 
 .water-fill {
+}
+
+.water-sensors {
+    margin-top: 8px;
+    display: flex;
+    gap: 4px;
+}
+
+.water-sensor {
+    width: 20px;
+    height: 20px;
+    background-color: #555;
+    border-radius: 2px;
+    transition: background-color 0.3s;
+}
+
+.water-sensor.active {
+    background-color: #00e676;
+}
+
     position: absolute;
     bottom: 0;
     width: 100%;
