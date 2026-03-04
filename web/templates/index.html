@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ATS - Advanced Trailering System</title>
+    
+    <!-- Three.js library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- Socket.IO client -->
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1>⛵ Advanced Trailering System (ATS)</h1>
+            <div class="connection-status">
+                <span id="status-indicator" class="status-dot disconnected"></span>
+                <span id="status-text">Disconnected</span>
+            </div>
+        </header>
+        
+        <main class="main-content">
+            <!-- 3D Visualization Panel -->
+            <section class="panel trailer-panel">
+                <h2>Trailer & Boat Position</h2>
+                <div id="canvas-container"></div>
+                <div class="trailer-info">
+                    <div class="info-item">
+                        <label>Trailer Angle:</label>
+                        <span id="gyro-display">0.0°</span>
+                    </div>
+                    <div class="info-item">
+                        <label>Boat Alignment:</label>
+                        <span id="alignment-status">—</span>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Water Level & Sensors -->
+            <section class="panel sensors-panel">
+                
+                <!-- Water Level Display -->
+                <div class="water-level-section">
+                    <h3>Water Level</h3>
+                    <div class="water-container">
+                        <div class="water-level-gauge">
+                            <div id="water-fill" class="water-fill"></div>
+                            <div class="water-level-labels">
+                                <span>0%</span>
+                                <span>50%</span>
+                                <span>100%</span>
+                            </div>
+                        </div>
+                        <div id="water-status" class="water-status">Not in Water</div>
+                    </div>
+                </div>
+                
+                <!-- Distance Sensors -->
+                <div class="distance-section">
+                    <h3>Distance Sensors</h3>
+                    <div class="distance-display">
+                        <div class="distance-item">
+                            <label>Left:</label>
+                            <div class="distance-bar">
+                                <div id="distance-left-bar" class="distance-progress"></div>
+                            </div>
+                            <span id="distance-left-value">0 mm</span>
+                        </div>
+                        <div class="distance-item">
+                            <label>Right:</label>
+                            <div class="distance-bar">
+                                <div id="distance-right-bar" class="distance-progress"></div>
+                            </div>
+                            <span id="distance-right-value">0 mm</span>
+                        </div>
+                    </div>
+                    <div id="distance-status" class="distance-status">—</div>
+                </div>
+                
+                <!-- Gyro/Angle Info -->
+                <div class="gyro-section">
+                    <h3>Trailer Angle (Gyro)</h3>
+                    <div class="gyro-display">
+                        <div class="angle-gauge" id="angle-gauge">
+                            <div id="angle-needle" class="angle-needle"></div>
+                        </div>
+                        <div class="gyro-values">
+                            <div>X (Pitch): <span id="gyro-x">0.0°</span></div>
+                            <div>Y (Roll): <span id="gyro-y">0.0°</span></div>
+                            <div>Z (Yaw): <span id="gyro-z">0.0°</span></div>
+                        </div>
+                    </div>
+                </div>
+                
+            </section>
+        </main>
+        
+        <!-- Footer with data/time -->
+        <footer class="footer">
+            <span id="last-update">Last Update: Never</span>
+            <span id="frame-rate">FPS: 0</span>
+        </footer>
+    </div>
+    
+    <script src="{{ url_for('static', filename='js/visualizer.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/socket-handler.js') }}"></script>
+</body>
+</html>
