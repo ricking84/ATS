@@ -26,6 +26,8 @@ class TrailerVisualizer {
         // Target rotation (radians) and smoothing
         this.targetRotation = new THREE.Euler(0, 0, 0, 'XYZ');
         this.rotationLerp = 0.08; // smoothing factor (0-1)
+        this.positionLerp = 0.08; // smoothing for position changes
+        this.maxLateralSlide = 0.6; // meters lateral slide left/right
         
         this.init();
     }
@@ -56,6 +58,11 @@ class TrailerVisualizer {
         this.createBoat();
         this.createWater();
         this.createGround();
+        
+        // Position trailer so wheels rest on ground at Y = -1.5
+        // Wheel center: trailer.y - 0.35, Wheel bottom: trailer.y - 0.35 - 0.35 = trailer.y - 0.7
+        // For wheel bottom at -1.5: trailer.y = -0.8
+        this.trailer.position.y = -0.8;
         
         // Save trailer base position for ramp calculations
         this.trailerBasePosition = this.trailer.position.clone();
@@ -103,38 +110,92 @@ class TrailerVisualizer {
     createTrailer() {
         this.trailer = new THREE.Group();
         
-        // Trailer frame (hull-like structure)
-        const frameGeometry = new THREE.BoxGeometry(2, 0.5, 6);
-        const frameMaterial = new THREE.MeshPhongMaterial({ color: 0x2196f3 });
-        const frame = new THREE.Mesh(frameGeometry, frameMaterial);
-        frame.castShadow = true;
-        frame.receiveShadow = true;
-        this.trailer.add(frame);
+        // Main longitudinal beams (left and right sides) - structural steel
+        const beamGeom = new THREE.BoxGeometry(0.08, 0.08, 6);
+        const beamMat = new THREE.MeshPhongMaterial({ color: 0x455a64 });
         
-        // Trailer tongue (front)
-        const tongueGeometry = new THREE.BoxGeometry(0.15, 0.2, 1);
+        const beamLeft = new THREE.Mesh(beamGeom, beamMat);
+        beamLeft.position.set(-0.8, 0, 0);
+        beamLeft.castShadow = true;
+        this.trailer.add(beamLeft);
+        
+        const beamRight = new THREE.Mesh(beamGeom, beamMat);
+        beamRight.position.set(0.8, 0, 0);
+        beamRight.castShadow = true;
+        this.trailer.add(beamRight);
+        
+        // Cross-members connecting the beams
+        const crossGeom = new THREE.BoxGeometry(1.7, 0.06, 0.08);
+        const crossMat = new THREE.MeshPhongMaterial({ color: 0x546e7a });
+        const crossPositions = [-2.5, -1.5, -0.5, 0.5, 1.5, 2.5];
+        crossPositions.forEach(z => {
+            const cross = new THREE.Mesh(crossGeom, crossMat);
+            cross.position.set(0, -0.05, z);
+            cross.castShadow = true;
+            this.trailer.add(cross);
+        });
+        
+        // Triangle bracing for structural appearance
+        const bracingGeom = new THREE.BoxGeometry(0.06, 0.06, 0.5);
+        const bracingMat = new THREE.MeshPhongMaterial({ color: 0x37474f });
+        for (let i = 0; i < 4; i++) {
+            const brace = new THREE.Mesh(bracingGeom, bracingMat);
+            brace.position.set(-0.7, 0.15, -1.5 + i * 1.5);
+            brace.rotation.z = Math.PI / 4;
+            brace.castShadow = true;
+            this.trailer.add(brace);
+            const brace2 = brace.clone();
+            brace2.position.x = 0.7;
+            this.trailer.add(brace2);
+        }
+        
+        // Trailer tongue (front) - connects to frame
+        const tongueGeometry = new THREE.BoxGeometry(0.08, 0.08, 1.0);
         const tongueMaterial = new THREE.MeshPhongMaterial({ color: 0x1565c0 });
         const tongue = new THREE.Mesh(tongueGeometry, tongueMaterial);
-        tongue.position.z = 3.5;
+        tongue.position.z = 3.0;  // connects to front of frame at z=2.5
         tongue.castShadow = true;
         tongue.receiveShadow = true;
         this.trailer.add(tongue);
         
-        // Trailer wheels (left and right)
-        const wheelGeometry = new THREE.CylinderGeometry(0.3, 0.3, 0.2, 32);
-        const wheelMaterial = new THREE.MeshPhongMaterial({ color: 0x333333 });
+        // Trailer wheels (left and right) - darker, more industrial
+        const wheelGeometry = new THREE.CylinderGeometry(0.35, 0.35, 0.25, 32);
+        const wheelMaterial = new THREE.MeshPhongMaterial({ color: 0x212121 });
         
         const wheelLeft = new THREE.Mesh(wheelGeometry, wheelMaterial);
-        wheelLeft.position.set(-1.2, -0.3, 1);
+        wheelLeft.position.set(-1.1, -0.35, 1);
         wheelLeft.rotation.z = Math.PI / 2;
         wheelLeft.castShadow = true;
         this.trailer.add(wheelLeft);
         
         const wheelRight = new THREE.Mesh(wheelGeometry, wheelMaterial);
-        wheelRight.position.set(1.2, -0.3, 1);
+        wheelRight.position.set(1.1, -0.35, 1);
         wheelRight.rotation.z = Math.PI / 2;
         wheelRight.castShadow = true;
         this.trailer.add(wheelRight);
+
+        // Wheel hubs (visible centers)
+        const hubGeom = new THREE.CylinderGeometry(0.1, 0.1, 0.35, 16);
+        const hubMat = new THREE.MeshPhongMaterial({ color: 0x9e9e9e });
+        const hubLeft = new THREE.Mesh(hubGeom, hubMat);
+        hubLeft.position.set(-1.1, -0.35, 1);
+        hubLeft.rotation.z = Math.PI / 2;
+        hubLeft.castShadow = true;
+        this.trailer.add(hubLeft);
+        const hubRight = hubLeft.clone();
+        hubRight.position.x = 1.1;
+        this.trailer.add(hubRight);
+
+        // Light fender guards above wheels
+        const fenderGeom = new THREE.BoxGeometry(0.25, 0.08, 0.4);
+        const fenderMat = new THREE.MeshPhongMaterial({ color: 0xff6f00 });
+        const fLeft = new THREE.Mesh(fenderGeom, fenderMat);
+        fLeft.position.set(-1.1, 0.08, 1);
+        fLeft.castShadow = true;
+        this.trailer.add(fLeft);
+        const fRight = fLeft.clone();
+        fRight.position.x = 1.1;
+        this.trailer.add(fRight);
         
         // Rails for boat guidance
         this.createRails();
@@ -143,17 +204,17 @@ class TrailerVisualizer {
     }
     
     createRails() {
-        // Left rail
-        const railLeftGeometry = new THREE.BoxGeometry(0.1, 0.3, 5.5);
-        const railMaterial = new THREE.MeshPhongMaterial({ color: 0xff9800 });
-        const railLeft = new THREE.Mesh(railLeftGeometry, railMaterial);
-        railLeft.position.set(-1.1, 0.3, -0.5);
+        // Boat guide rails (aluminum channel, one on each side)
+        const railGeometry = new THREE.BoxGeometry(0.12, 0.1, 5.5);
+        const railMaterial = new THREE.MeshPhongMaterial({ color: 0xb0bec5 });
+        
+        const railLeft = new THREE.Mesh(railGeometry, railMaterial);
+        railLeft.position.set(-0.95, 0.15, -0.5);
         railLeft.castShadow = true;
         this.trailer.add(railLeft);
         
-        // Right rail
-        const railRight = new THREE.Mesh(railLeftGeometry, railMaterial);
-        railRight.position.set(1.1, 0.3, -0.5);
+        const railRight = new THREE.Mesh(railGeometry, railMaterial);
+        railRight.position.set(0.95, 0.15, -0.5);
         railRight.castShadow = true;
         this.trailer.add(railRight);
     }
@@ -161,36 +222,115 @@ class TrailerVisualizer {
     createBoat() {
         this.boat = new THREE.Group();
         
-        // Boat hull
-        const hullGeometry = new THREE.BoxGeometry(1.2, 0.6, 3);
+        // Main hull - long enough to match trailer frame (~4.7 units)
+        const hullGeometry = new THREE.BoxGeometry(1.0, 0.35, 4.7);
         const hullMaterial = new THREE.MeshPhongMaterial({ color: 0xffc107 });
         const hull = new THREE.Mesh(hullGeometry, hullMaterial);
-        hull.position.y = -0.15;
+        hull.position.y = -0.1;
         hull.castShadow = true;
         hull.receiveShadow = true;
         this.boat.add(hull);
-        
-        // Boat cabin
-        const cabinGeometry = new THREE.BoxGeometry(1, 0.8, 1.2);
+
+        // Bow cap (simple rounded front, not pointy)
+        const bowCapGeom = new THREE.BoxGeometry(1.0, 0.3, 0.4);
+        const bowCap = new THREE.Mesh(bowCapGeom, hullMaterial);
+        bowCap.position.set(0, 0, -2.45);  // at bow end
+        bowCap.rotation.x = -0.15;  // slight downward angle
+        bowCap.castShadow = true;
+        this.boat.add(bowCap);
+
+        // Gunwale/sheer stripe (top edge detail)
+        const gunwaleGeom = new THREE.BoxGeometry(1.05, 0.05, 4.7);
+        const gunwaleMat = new THREE.MeshPhongMaterial({ color: 0xe65100 });
+        const gunwale = new THREE.Mesh(gunwaleGeom, gunwaleMat);
+        gunwale.position.y = 0.2;
+        gunwale.castShadow = true;
+        this.boat.add(gunwale);
+
+        // Windshield (cabin front glass) - simple vertical pane
+        const windshieldGeom = new THREE.BoxGeometry(0.95, 0.3, 0.05);
+        const windshieldMat = new THREE.MeshPhongMaterial({ color: 0x81d4fa, transparent: true, opacity: 0.5 });
+        const windshield = new THREE.Mesh(windshieldGeom, windshieldMat);
+        windshield.position.set(0, 0.38, -1.5);
+        windshield.castShadow = true;
+        this.boat.add(windshield);
+
+        // Cabin/console - soft top structure
+        const cabinGeometry = new THREE.BoxGeometry(0.85, 0.4, 1.0);
         const cabinMaterial = new THREE.MeshPhongMaterial({ color: 0xfff3e0 });
         const cabin = new THREE.Mesh(cabinGeometry, cabinMaterial);
-        cabin.position.set(0, 0.5, -0.5);
+        cabin.position.set(0, 0.3, -1.2);
         cabin.castShadow = true;
         cabin.receiveShadow = true;
         this.boat.add(cabin);
+
+        // Hardtop/canopy
+        const canopyGeom = new THREE.BoxGeometry(1.05, 0.08, 1.5);
+        const canopyMat = new THREE.MeshPhongMaterial({ color: 0xff9800 });
+        const canopy = new THREE.Mesh(canopyGeom, canopyMat);
+        canopy.position.set(0, 0.6, -0.2);
+        canopy.castShadow = true;
+        this.boat.add(canopy);
+
+        // Canopy supports (vertical posts)
+        const supportGeom = new THREE.BoxGeometry(0.05, 0.35, 0.05);
+        const supportMat = new THREE.MeshPhongMaterial({ color: 0x424242 });
+        [-0.4, 0.4].forEach(x => {
+            const support = new THREE.Mesh(supportGeom, supportMat);
+            support.position.set(x, 0.45, -0.7);
+            this.boat.add(support);
+        });
+
+        // Transom (flat stern/back)
+        const tranGeom = new THREE.BoxGeometry(1.05, 0.25, 0.08);
+        const tranMat = new THREE.MeshPhongMaterial({ color: 0xffd54f });
+        const tran = new THREE.Mesh(tranGeom, tranMat);
+        tran.position.set(0, -0.05, 2.35);
+        tran.castShadow = true;
+        this.boat.add(tran);
+
+        // Motor/outboard engine at stern
+        const motorGeom = new THREE.BoxGeometry(0.25, 0.2, 0.15);
+        const motorMat = new THREE.MeshPhongMaterial({ color: 0x424242 });
+        const motor = new THREE.Mesh(motorGeom, motorMat);
+        motor.position.set(0, -0.2, 2.5);
+        motor.castShadow = true;
+        this.boat.add(motor);
+
+        // Prop shaft
+        const shaftGeom = new THREE.CylinderGeometry(0.02, 0.02, 0.4, 6);
+        const shaftMat = new THREE.MeshPhongMaterial({ color: 0x757575 });
+        const shaft = new THREE.Mesh(shaftGeom, shaftMat);
+        shaft.position.set(0, -0.3, 2.6);
+        shaft.rotation.x = Math.PI / 2;
+        this.boat.add(shaft);
+
+        // Port and starboard railings (simple side rails)
+        const railGeom = new THREE.BoxGeometry(0.08, 0.12, 4.7);
+        const railMat = new THREE.MeshPhongMaterial({ color: 0xcccccc });
+        const railPort = new THREE.Mesh(railGeom, railMat);
+        railPort.position.set(-0.55, 0.28, 0);
+        railPort.castShadow = true;
+        this.boat.add(railPort);
         
-        // Motor/prop
-        const propGeometry = new THREE.BoxGeometry(0.2, 0.1, 0.4);
-        const propMaterial = new THREE.MeshPhongMaterial({ color: 0x333333 });
-        const prop = new THREE.Mesh(propGeometry, propMaterial);
-        prop.position.set(0, -0.4, 1.6);
-        prop.castShadow = true;
-        this.boat.add(prop);
+        const railStarboard = railPort.clone();
+        railStarboard.position.x = 0.55;
+        this.boat.add(railStarboard);
+
+        // Center console (steering wheel area)
+        const consoleGeom = new THREE.BoxGeometry(0.2, 0.25, 0.3);
+        const consoleMat = new THREE.MeshPhongMaterial({ color: 0x616161 });
+        const console = new THREE.Mesh(consoleGeom, consoleMat);
+        console.position.set(0, 0.15, -1.1);
+        console.castShadow = true;
+        this.boat.add(console);
         
-        // Position boat on trailer
-        this.boat.position.set(0, 0.5, 0);
+        // Position boat on trailer (rear-facing so it exits off the back)
+        this.boat.position.set(0, 0.45, -0.6);
+        this.boatBasePosition = this.boat.position.clone(); // Store base position on trailer
         
-        this.trailer.add(this.boat);
+        // Add boat to scene directly (not to trailer) so it can float independently
+        this.scene.add(this.boat);
     }
     
     createWater() {
@@ -238,7 +378,9 @@ class TrailerVisualizer {
         const radY = THREE.MathUtils.degToRad(gyroY);
         const radZ = THREE.MathUtils.degToRad(gyroZ);
 
-        this.targetRotation.x = radX;
+        // Invert pitch so positive gyro pitch results in the trailer tilting the other way
+        // (keeps the tongue/front anchored visually)
+        this.targetRotation.x = -radX;
         this.targetRotation.y = radZ;
         this.targetRotation.z = radY;
     }
@@ -290,28 +432,87 @@ class TrailerVisualizer {
 
         // Move trailer along ramp based on pitch (targetRotation.x)
         if (this.trailer && this.trailerBasePosition) {
-            // Map pitch to movement - scale controls how far the trailer slides
+            // Map pitch to forward/backward slide along ramp
             const rampAngle = this.targetRotation.x; // radians
-            const maxSlide = 3.0; // max movement along z (tune this)
-            const verticalDrop = 0.8; // max drop in y
-
-            // Compute slide amount (positive pitch -> slide forward)
+            const maxSlide = 3.0; // max forward slide down the ramp
+            
+            // Compute slide amount: positive pitch (nose up) = slide backward toward water
             const slide = Math.sin(rampAngle) * maxSlide;
-            const drop = Math.abs(Math.sin(rampAngle)) * verticalDrop;
 
-            // Update trailer position relative to base
+            // Update trailer position
+            // Z: slides along ramp
             this.trailer.position.z = this.trailerBasePosition.z + slide;
-            this.trailer.position.y = this.trailerBasePosition.y - drop;
+            // Y: LOCKED on ground (wheels stay on ground, frame tilts)
+            this.trailer.position.y = this.trailerBasePosition.y;
+
+            // Lateral slide based on roll (targetRotation.z)
+            const roll = this.targetRotation.z || 0;
+            const lateralShift = Math.sin(roll) * this.maxLateralSlide;
+            // Smooth lateral movement
+            this.trailer.position.x = THREE.MathUtils.lerp(this.trailer.position.x || 0, this.trailerBasePosition.x + lateralShift, this.positionLerp);
+
+            // Update boat position (now independent from trailer)
+            if (this.boat) {
+                // Calculate boat float depth based on pitch angle
+                // Progressive floating: rear touches first, then lifts as trailer descends further
+                
+                // Calculate water contact level: 0 = on trailer, 1 = fully floating
+                // Boat starts floating when pitch exceeds ~8 degrees
+                const floatThreshold = 0.15; // radians (~8.6 degrees)
+                const maxFloating = 0.9; // radians (~51 degrees)
+                const contactRatio = Math.max(0, Math.min(1, (Math.abs(this.targetRotation.x) - floatThreshold) / (maxFloating - floatThreshold)));
+                
+                // When NOT floating: lock boat firmly to trailer
+                if (contactRatio < 0.05) {
+                    // Boat stays on trailer (no lerp, direct copy)
+                    this.boat.position.x = this.trailer.position.x;
+                    this.boat.position.y = this.trailer.position.y + 0.45;
+                    this.boat.position.z = this.trailer.position.z - 0.6;
+                } else {
+                    // When floating: boat moves away from trailer into water
+                    // Water surface is at Y = -1, boat floats at Y = -0.8 (0.2 above water)
+                    const waterSurfaceY = -1.0;
+                    const boatFloatingY = waterSurfaceY + 0.25;  // higher float clearance
+                    
+                    // Boat moves forward/away from the trailer as it starts to float
+                    // Start position: rear of trailer, End position: center of water
+                    const startZ = this.trailer.position.z - 0.6;
+                    const endZ = this.water.position.z - 0.3;  // move away from ramp
+                    const boatZPos = THREE.MathUtils.lerp(startZ, endZ, contactRatio);
+                    
+                    // Smoothly transition boat position
+                    this.boat.position.x = THREE.MathUtils.lerp(this.boat.position.x, this.trailer.position.x + 0.1, 0.05);
+                    this.boat.position.y = THREE.MathUtils.lerp(this.boat.position.y, boatFloatingY, 0.04);
+                    this.boat.position.z = THREE.MathUtils.lerp(this.boat.position.z, boatZPos, 0.05);
+                }
+            }
 
             // Keep camera target centered on trailer
             this.cameraTarget.set(this.trailer.position.x, this.trailer.position.y + 0.5, this.trailer.position.z);
             this.updateCameraPosition();
         }
 
+        // Make ground follow trailer horizontally so ramp stays under trailer
+        if (this.ground && this.trailer) {
+            // Move ground in Z to match trailer so the ramp appears beneath the trailer
+            this.ground.position.z = this.trailer.position.z;
+            // Ground Y stays FIXED at -1.5 so trailer wheels rest on it (don't move it down)
+            this.ground.position.y = -1.5;
+            // Align ground X to trailer so lateral slope stays under trailer
+            this.ground.position.x = THREE.MathUtils.lerp(this.ground.position.x || 0, this.trailer.position.x, this.positionLerp);
+        }
+
+        // Make water follow trailer horizontally as well
+        if (this.water && this.trailer) {
+            this.water.position.z = this.trailer.position.z;
+            this.water.position.x = this.trailer.position.x;
+        }
+
         // Make ground subtly respond (inverse small tilt for visual reference)
         if (this.ground) {
-            const groundTargetX = -this.targetRotation.x * 0.08; // small opposite tilt
-            const groundTargetZ = -this.targetRotation.z * 0.08;
+            // Make ground slope follow trailer pitch so ramp is visible under trailer
+            const groundTargetX = this.targetRotation.x * 0.9; // follow pitch closely
+            const groundTargetZ = -this.targetRotation.z * 0.9; // slope multiplier for roll
             this.ground.rotation.x = THREE.MathUtils.lerp(this.ground.rotation.x, -Math.PI / 2 + groundTargetX, this.rotationLerp);
             this.ground.rotation.z = THREE.MathUtils.lerp(this.ground.rotation.z || 0, groundTargetZ, this.rotationLerp);
         }
