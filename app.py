@@ -1,6 +1,6 @@
 """
 Flask backend server for ATS (Advanced Trailering System)
-Handles Bluetooth data collection and WebSocket streaming to frontend
+Handles Bluetooth data collection and WebSocket streaming to frontend data
 """
 
 from flask import Flask, render_template, jsonify
