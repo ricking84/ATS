@@ -132,19 +132,55 @@ class TrailerVisualizer {
             cross.castShadow = true;
             this.trailer.add(cross);
         });
- 
-
         
         // Trailer tongue (front) - connects to frame
         const tongueGeometry = new THREE.BoxGeometry(0.08, 0.08, 1.0);
-        const tongueMaterial = new THREE.MeshPhongMaterial({ color: 0x1565c0 });
+        const tongueMaterial = new THREE.MeshPhongMaterial({ color: 0x455a64 });
         const tongue = new THREE.Mesh(tongueGeometry, tongueMaterial);
         tongue.position.z = 3.0;  // connects to front of frame at z=2.5
         tongue.castShadow = true;
         tongue.receiveShadow = true;
         this.trailer.add(tongue);
         
-        // Trailer wheels (left and right) - darker, more industrial
+        // Diagonal bracing beams connecting main beams to tongue
+        const diagonalGeom = new THREE.BoxGeometry(0.08, 0.08, 1.3);
+        const diagonalMat = new THREE.MeshPhongMaterial({ color: 0x455a64 });
+        
+        // Left diagonal from beamLeft to tongue
+        const diagLeft = new THREE.Mesh(diagonalGeom, diagonalMat);
+        diagLeft.position.set(-0.4, 0, 2);
+        diagLeft.rotation.y = Math.atan(0.8);
+        diagLeft.castShadow = true;
+        this.trailer.add(diagLeft);
+        
+        // Right diagonal from beamRight to tongue
+        const diagRight = new THREE.Mesh(diagonalGeom, diagonalMat);
+        diagRight.position.set(0.4, 0, 2);
+        diagRight.rotation.y = -Math.atan(0.8);
+        diagRight.castShadow = true;
+        this.trailer.add(diagRight);
+                // Vertical guide beams for boat guidance
+        const verticalGuideGeom = new THREE.CylinderGeometry(0.05, 0.05, 0.8, 8);
+        const verticalGuideMat = new THREE.MeshPhongMaterial({ color: 0x90caf9 });
+        
+        // Left rear guide
+        const guideLeftRear = new THREE.Mesh(verticalGuideGeom, verticalGuideMat);
+        guideLeftRear.position.set(-0.8, 0.4, -2);
+        guideLeftRear.castShadow = true;
+        this.trailer.add(guideLeftRear);
+        
+        // Right rear guide
+        const guideRightRear = new THREE.Mesh(verticalGuideGeom, verticalGuideMat);
+        guideRightRear.position.set(0.8, 0.4, -2);
+        guideRightRear.castShadow = true;
+        this.trailer.add(guideRightRear);
+        
+        // Tongue rear guide
+        const guideTongueRear = new THREE.Mesh(verticalGuideGeom, verticalGuideMat);
+        guideTongueRear.position.set(0, 0.4, 2.5);
+        guideTongueRear.castShadow = true;
+        this.trailer.add(guideTongueRear);
+                // Trailer wheels (left and right) - darker, more industrial
         const wheelGeometry = new THREE.CylinderGeometry(0.35, 0.35, 0.25, 32);
         const wheelMaterial = new THREE.MeshPhongMaterial({ color: 0x212121 });
         

@@ -76,7 +76,6 @@ function handleSensorData(data) {
     // Update 3D visualization
     visualizer.updateFloatSensor(floatSensor);
     visualizer.updateTrailerAngle(gyro.x, gyro.y, gyro.z);
-    visualizer.updateBoatPosition(distance.left, distance.right);
     
     // Update UI displays
     updateWaterLevelDisplay(floatSensor);
