@@ -4,7 +4,7 @@ Handles Bluetooth data collection and WebSocket streaming to frontend
 """
 
 from flask import Flask, render_template, jsonify
-from flask_socketio import SocketIO, emit, broadcast
+from flask_socketio import SocketIO, emit
 from Trailer.data_models import SensorData
 import threading
 import json
