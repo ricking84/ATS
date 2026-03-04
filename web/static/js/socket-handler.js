@@ -70,15 +70,17 @@ function handleSensorData(data) {
     
     // Extract sensor values
     const floatSensor = data.float_sensor || false;
+    const waterSensors = data.water_sensors || [false, false, false, false];
     const gyro = data.gyro || { x: 0, y: 0, z: 0 };
     const distance = data.distance || { left: 0, right: 0 };
     
     // Update 3D visualization
     visualizer.updateFloatSensor(floatSensor);
+    visualizer.updateWaterSensors(waterSensors);
     visualizer.updateTrailerAngle(gyro.x, gyro.y, gyro.z);
     
     // Update UI displays
-    updateWaterLevelDisplay(floatSensor);
+    updateWaterLevelDisplay(waterSensors);
     updateDistanceSensorsDisplay(distance.left, distance.right);
     updateGyroDisplay(gyro.x, gyro.y, gyro.z);
     updateTimestamp(data.timestamp);
@@ -90,21 +92,39 @@ function handleSensorData(data) {
     updateFPS();
 }
 
-function updateWaterLevelDisplay(inWater) {
+function updateWaterLevelDisplay(sensorArray) {
     const fillElement = document.getElementById('water-fill');
     const statusElement = document.getElementById('water-status');
+    const sensorContainer = document.getElementById('water-sensors');
     
-    const fillHeight = inWater ? 100 : 0;
+    // determine active count
+    let count = 0;
+    if (Array.isArray(sensorArray)) {
+        count = sensorArray.filter(Boolean).length;
+        sensorArray.forEach((active, idx) => {
+            const box = document.getElementById('sensor-' + idx);
+            if (box) {
+                if (active) box.classList.add('active');
+                else box.classList.remove('active');
+            }
+        });
+    }
+
+    const fillHeight = (count / 4) * 100;
     fillElement.style.height = fillHeight + '%';
     
-    if (inWater) {
-        statusElement.textContent = '🌊 IN WATER';
-        statusElement.classList.add('in-water');
-        statusElement.classList.remove('out-water');
-    } else {
+    if (count === 0) {
         statusElement.textContent = '🏜️ Out of Water';
         statusElement.classList.remove('in-water');
         statusElement.classList.add('out-water');
+    } else if (count === 4) {
+        statusElement.textContent = '🌊 FULLY IN WATER';
+        statusElement.classList.add('in-water');
+        statusElement.classList.remove('out-water');
+    } else {
+        statusElement.textContent = '🌊 Partial Contact';
+        statusElement.classList.add('in-water');
+        statusElement.classList.remove('out-water');
     }
 }
 

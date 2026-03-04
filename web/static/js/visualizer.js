@@ -21,11 +21,14 @@ class TrailerVisualizer {
         this.currentDistanceRight = 0;
         
         this.floatSensor = false;
+        this.waterOpacity = 0; // current opacity
+        this.targetWaterOpacity = 0; // target opacity for smooth transition
 
         // Target rotation (radians) and smoothing
         this.targetRotation = new THREE.Euler(0, 0, 0, 'XYZ');
         this.rotationLerp = 0.08; // smoothing factor (0-1)
         this.positionLerp = 0.08; // smoothing for position changes
+        this.waterLerp = 0.05; // water fade in/out smoothing factor
         this.maxLateralSlide = 0.6; // meters lateral slide left/right
         
         this.init();
@@ -299,14 +302,19 @@ class TrailerVisualizer {
     updateFloatSensor(inWater) {
         this.floatSensor = inWater;
         
-        // Show/hide water based on float sensor
-        if (inWater) {
-            this.water.visible = true;
-            // Animate water slightly
-            this.water.position.y = -1 + Math.sin(Date.now() * 0.001) * 0.05;
-        } else {
-            this.water.visible = false;
-        }
+        // Set target opacity for smooth fade in/out
+        this.targetWaterOpacity = inWater ? 0.4 : 0;
+    }
+
+    updateWaterSensors(sensorArray) {
+        // sensorArray expected length 4 containing booleans
+        if (!Array.isArray(sensorArray)) return;
+        sensorArray.forEach((active, idx) => {
+            const box = this.waterSensorBoxes[idx];
+            if (box) {
+                box.material.color.set(active ? 0x00e676 : 0x555555);
+            }
+        });
     }
     
     animate() {
@@ -396,6 +404,20 @@ class TrailerVisualizer {
             this.water.position.z = this.trailer.position.z;
             this.water.position.x = this.trailer.position.x;
         }
+
+        // Smooth water opacity transition
+        if (this.water) {
+            this.waterOpacity = THREE.MathUtils.lerp(this.waterOpacity, this.targetWaterOpacity, this.waterLerp);
+            this.water.material.opacity = this.waterOpacity;
+            // Show water slightly above fully transparent to prevent clipping
+            this.water.visible = this.waterOpacity > 0.01;
+            // Animate water slightly when visible
+            if (this.water.visible) {
+                this.water.position.y = -1 + Math.sin(Date.now() * 0.001) * 0.05;
+            }
+        }
+
+        // ensure sensors are up to date (optional animation could go here)
 
         // Make ground subtly respond (inverse small tilt for visual reference)
         if (this.ground) {
