@@ -132,20 +132,8 @@ class TrailerVisualizer {
             cross.castShadow = true;
             this.trailer.add(cross);
         });
-        
-        // Triangle bracing for structural appearance
-        const bracingGeom = new THREE.BoxGeometry(0.06, 0.06, 0.5);
-        const bracingMat = new THREE.MeshPhongMaterial({ color: 0x37474f });
-        for (let i = 0; i < 4; i++) {
-            const brace = new THREE.Mesh(bracingGeom, bracingMat);
-            brace.position.set(-0.7, 0.15, -1.5 + i * 1.5);
-            brace.rotation.z = Math.PI / 4;
-            brace.castShadow = true;
-            this.trailer.add(brace);
-            const brace2 = brace.clone();
-            brace2.position.x = 0.7;
-            this.trailer.add(brace2);
-        }
+ 
+
         
         // Trailer tongue (front) - connects to frame
         const tongueGeometry = new THREE.BoxGeometry(0.08, 0.08, 1.0);
