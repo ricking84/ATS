@@ -19,37 +19,65 @@ class SensorSimulator:
     def __init__(self):
         self.start_time = time.time()
         self.time_offset = 0
+        # Ramp simulation parameters
+        self.ramp_start = 2.0        # seconds before the trailer starts descending
+        self.ramp_duration = 18.0    # seconds to reach water
+        self.max_pitch = 15.0        # degrees at bottom of ramp
+        self.min_distance = 200.0    # mm when at the end (boat near)
+        self.start_distance = 2500.0 # mm starting distance
+        self.water_triggered = False
     
     def get_simulated_data(self) -> SensorData:
         """Generate simulated sensor data"""
         
         # Simulate time progression
         elapsed = time.time() - self.start_time
-        
-        # 1. Float sensor - oscillates every 10 seconds
-        float_sensor = 1 if (elapsed % 20) < 10 else 0
-        
-        # 2. Gyro data - simulate gentle rocking motion
-        gyro_x = math.sin(elapsed * 0.3) * 15  # Pitch: ±15 degrees
-        gyro_y = math.cos(elapsed * 0.2) * 8   # Roll: ±8 degrees
-        gyro_z = math.sin(elapsed * 0.15) * 5  # Yaw: ±5 degrees
-        
-        # 3. Distance sensors - simulate boat positioning
-        # Left sensor - starts at 1500mm, with some variation
-        base_distance = 1500
-        variation = math.sin(elapsed * 0.4) * 200  # ±200mm variation
-        noise_left = math.sin(elapsed * 0.7) * 50   # ±50mm noise
-        distance_left = base_distance + variation + noise_left
-        
-        # Right sensor - slightly offset to simulate centering
-        offset = math.cos(elapsed * 0.35) * 150    # Centering motion
-        noise_right = math.cos(elapsed * 0.8) * 50  # ±50mm noise
-        distance_right = base_distance + offset + noise_right
-        
-        # Ensure distances are within realistic range
-        distance_left = max(100, min(3000, distance_left))
-        distance_right = max(100, min(3000, distance_right))
-        
+        # Default values
+        float_sensor = 0
+        gyro_x = 0.0
+        gyro_y = 0.0
+        gyro_z = 0.0
+        distance_left = self.start_distance
+        distance_right = self.start_distance
+
+        # Before ramp begins - mild idle motion
+        if elapsed < self.ramp_start:
+            gyro_x = math.sin(elapsed * 0.3) * 2.0
+            gyro_y = math.cos(elapsed * 0.2) * 1.5
+            gyro_z = math.sin(elapsed * 0.15) * 1.0
+        else:
+            # Progress along ramp from 0 -> 1
+            t = min(1.0, max(0.0, (elapsed - self.ramp_start) / self.ramp_duration))
+            # Smooth easing (easeInOut)
+            ease = 0.5 - 0.5 * math.cos(math.pi * t)
+
+            # Pitch increases toward max_pitch
+            gyro_x = ease * self.max_pitch
+            # Small roll/yaw variations
+            gyro_y = math.cos(elapsed * 0.4) * 2.0 * (1.0 - t)
+            gyro_z = math.sin(elapsed * 0.35) * 1.5 * (1.0 - t)
+
+            # Distances move as boat progresses onto trailer
+            avg_distance = self.start_distance + (self.min_distance - self.start_distance) * ease
+            # Add small noise
+            noise = math.sin(elapsed * 0.9) * 20
+            distance_left = max(50.0, avg_distance + noise + math.cos(elapsed * 0.7) * 10)
+            distance_right = max(50.0, avg_distance + noise + math.sin(elapsed * 0.65) * 10)
+
+            # When fully down ramp, trigger float sensor (in water)
+            if t >= 1.0 and not self.water_triggered:
+                self.water_triggered = True
+                float_sensor = 1
+            elif self.water_triggered:
+                float_sensor = 1
+
+        # If water already triggered, hold final values
+        if self.water_triggered:
+            gyro_x = self.max_pitch
+            # distances near minimum to indicate boat in place
+            distance_left = max(50.0, self.min_distance + math.sin(elapsed * 0.2) * 5)
+            distance_right = max(50.0, self.min_distance + math.cos(elapsed * 0.2) * 5)
+
         # Create sensor data
         sensor_data = SensorData(
             timestamp=datetime.now().timestamp(),

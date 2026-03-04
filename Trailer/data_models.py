@@ -38,14 +38,33 @@ class SensorData:
     @staticmethod
     def from_dict(data: dict) -> 'SensorData':
         """Parse from JSON/dict format"""
+        # Accept both flat and nested formats
+        gyro = data.get('gyro', {})
+        distance = data.get('distance', {})
+
+        # Helper to read value from nested or flat keys
+        def _g(k, nested_key=None, default=0.0):
+            if nested_key and nested_key in gyro:
+                return gyro.get(nested_key, default)
+            if k in data:
+                return data.get(k, default)
+            return default
+
+        def _d(k, nested_key=None, default=0.0):
+            if nested_key and nested_key in distance:
+                return distance.get(nested_key, default)
+            if k in data:
+                return data.get(k, default)
+            return default
+
         return SensorData(
             timestamp=data.get('timestamp', datetime.now().timestamp()),
-            float_sensor=bool(data.get('float_sensor', 0)),
-            gyro_x=float(data.get('gyro_x', 0)),
-            gyro_y=float(data.get('gyro_y', 0)),
-            gyro_z=float(data.get('gyro_z', 0)),
-            distance_left=float(data.get('distance_left', 0)),
-            distance_right=float(data.get('distance_right', 0))
+            float_sensor=bool(data.get('float_sensor', data.get('in_water', 0))),
+            gyro_x=float(_g('gyro_x', 'x', 0)),
+            gyro_y=float(_g('gyro_y', 'y', 0)),
+            gyro_z=float(_g('gyro_z', 'z', 0)),
+            distance_left=float(_d('distance_left', 'left', 0)),
+            distance_right=float(_d('distance_right', 'right', 0))
         )
 
 

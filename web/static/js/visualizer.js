@@ -12,6 +12,7 @@ class TrailerVisualizer {
         this.trailer = null;
         this.boat = null;
         this.water = null;
+        this.ground = null;
         
         this.currentGyroX = 0;
         this.currentGyroY = 0;
@@ -21,6 +22,10 @@ class TrailerVisualizer {
         this.currentDistanceRight = 0;
         
         this.floatSensor = false;
+
+        // Target rotation (radians) and smoothing
+        this.targetRotation = new THREE.Euler(0, 0, 0, 'XYZ');
+        this.rotationLerp = 0.08; // smoothing factor (0-1)
         
         this.init();
     }
@@ -52,6 +57,23 @@ class TrailerVisualizer {
         this.createWater();
         this.createGround();
         
+        // Save trailer base position for ramp calculations
+        this.trailerBasePosition = this.trailer.position.clone();
+
+        // Camera orbit / touch controls state
+        this.cameraTarget = new THREE.Vector3(0, 0, 0);
+        this.orbit = {
+            theta: Math.PI / 2, // horizontal angle
+            phi: Math.PI / 6,   // vertical angle
+            radius: 6,
+            minRadius: 3,
+            maxRadius: 20,
+        };
+        this.isPointerDown = false;
+        this.pointer = {x: 0, y: 0};
+        this.prevPointer = {x: 0, y: 0};
+        this.addPointerControls();
+
         // Handle window resize
         window.addEventListener('resize', () => this.onWindowResize());
         
@@ -198,24 +220,27 @@ class TrailerVisualizer {
         ground.rotation.x = -Math.PI / 2;
         ground.position.y = -1.5;
         ground.receiveShadow = true;
-        this.scene.add(ground);
+        this.ground = ground;
+        this.scene.add(this.ground);
     }
     
     updateTrailerAngle(gyroX, gyroY, gyroZ) {
-        // Update rotation based on gyro data
+        // Store latest raw values
         this.currentGyroX = gyroX;
         this.currentGyroY = gyroY;
         this.currentGyroZ = gyroZ;
-        
-        // Convert degrees to radians
+
+        // Convert degrees to radians and map axes to Three.js rotations
+        // Mapping: gyroX -> rotation.x (pitch)
+        //          gyroY -> rotation.z (roll)
+        //          gyroZ -> rotation.y (yaw)
         const radX = THREE.MathUtils.degToRad(gyroX);
         const radY = THREE.MathUtils.degToRad(gyroY);
         const radZ = THREE.MathUtils.degToRad(gyroZ);
-        
-        // Apply rotation (pitch, roll, yaw)
-        this.trailer.rotation.x = radX;
-        this.trailer.rotation.y = radZ;
-        // radY (roll) applied separately if needed
+
+        this.targetRotation.x = radX;
+        this.targetRotation.y = radZ;
+        this.targetRotation.z = radY;
     }
     
     updateBoatPosition(distanceLeft, distanceRight) {
@@ -255,7 +280,97 @@ class TrailerVisualizer {
     
     animate() {
         requestAnimationFrame(() => this.animate());
+
+        // Smoothly interpolate trailer rotation toward targetRotation
+        if (this.trailer) {
+            this.trailer.rotation.x = THREE.MathUtils.lerp(this.trailer.rotation.x, this.targetRotation.x, this.rotationLerp);
+            this.trailer.rotation.y = THREE.MathUtils.lerp(this.trailer.rotation.y, this.targetRotation.y, this.rotationLerp);
+            this.trailer.rotation.z = THREE.MathUtils.lerp(this.trailer.rotation.z, this.targetRotation.z, this.rotationLerp);
+        }
+
+        // Move trailer along ramp based on pitch (targetRotation.x)
+        if (this.trailer && this.trailerBasePosition) {
+            // Map pitch to movement - scale controls how far the trailer slides
+            const rampAngle = this.targetRotation.x; // radians
+            const maxSlide = 3.0; // max movement along z (tune this)
+            const verticalDrop = 0.8; // max drop in y
+
+            // Compute slide amount (positive pitch -> slide forward)
+            const slide = Math.sin(rampAngle) * maxSlide;
+            const drop = Math.abs(Math.sin(rampAngle)) * verticalDrop;
+
+            // Update trailer position relative to base
+            this.trailer.position.z = this.trailerBasePosition.z + slide;
+            this.trailer.position.y = this.trailerBasePosition.y - drop;
+
+            // Keep camera target centered on trailer
+            this.cameraTarget.set(this.trailer.position.x, this.trailer.position.y + 0.5, this.trailer.position.z);
+            this.updateCameraPosition();
+        }
+
+        // Make ground subtly respond (inverse small tilt for visual reference)
+        if (this.ground) {
+            const groundTargetX = -this.targetRotation.x * 0.08; // small opposite tilt
+            const groundTargetZ = -this.targetRotation.z * 0.08;
+            this.ground.rotation.x = THREE.MathUtils.lerp(this.ground.rotation.x, -Math.PI / 2 + groundTargetX, this.rotationLerp);
+            this.ground.rotation.z = THREE.MathUtils.lerp(this.ground.rotation.z || 0, groundTargetZ, this.rotationLerp);
+        }
+
         this.renderer.render(this.scene, this.camera);
+    }
+
+    // Pointer / touch controls (simple orbit)
+    addPointerControls() {
+        const canvas = this.renderer.domElement;
+
+        canvas.style.touchAction = 'none';
+
+        canvas.addEventListener('pointerdown', (e) => {
+            this.isPointerDown = true;
+            this.prevPointer.x = e.clientX;
+            this.prevPointer.y = e.clientY;
+            canvas.setPointerCapture(e.pointerId);
+        });
+
+        canvas.addEventListener('pointermove', (e) => {
+            if (!this.isPointerDown) return;
+            const dx = e.clientX - this.prevPointer.x;
+            const dy = e.clientY - this.prevPointer.y;
+            this.prevPointer.x = e.clientX;
+            this.prevPointer.y = e.clientY;
+
+            // Rotate orbit angles
+            this.orbit.theta -= dx * 0.005;
+            this.orbit.phi -= dy * 0.005;
+            // Clamp phi
+            this.orbit.phi = Math.max(0.1, Math.min(Math.PI / 2.2, this.orbit.phi));
+            this.updateCameraPosition();
+        });
+
+        canvas.addEventListener('pointerup', (e) => {
+            this.isPointerDown = false;
+            try { canvas.releasePointerCapture(e.pointerId); } catch (err) {}
+        });
+
+        canvas.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            this.orbit.radius += e.deltaY * 0.01;
+            this.orbit.radius = Math.max(this.orbit.minRadius, Math.min(this.orbit.maxRadius, this.orbit.radius));
+            this.updateCameraPosition();
+        }, { passive: false });
+
+        // Initial camera position
+        this.updateCameraPosition();
+    }
+
+    updateCameraPosition() {
+        const r = this.orbit.radius;
+        const x = r * Math.sin(this.orbit.phi) * Math.cos(this.orbit.theta);
+        const z = r * Math.sin(this.orbit.phi) * Math.sin(this.orbit.theta);
+        const y = r * Math.cos(this.orbit.phi);
+
+        this.camera.position.set(this.cameraTarget.x + x, this.cameraTarget.y + y, this.cameraTarget.z + z);
+        this.camera.lookAt(this.cameraTarget);
     }
     
     onWindowResize() {

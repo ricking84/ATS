@@ -101,14 +101,14 @@ def bluetooth_receiver_thread():
                 logger.info(f'Received sensor data: {latest_sensor_data}')
                 
                 # Broadcast to all connected WebSocket clients
-                socketio.emit('sensor_update', latest_sensor_data.to_dict(), broadcast=True)
+                socketio.emit('sensor_update', latest_sensor_data.to_dict())
     
     except Exception as e:
         logger.error(f'Bluetooth receiver error: {e}')
         # Attempt reconnection after delay
         import time
         time.sleep(5)
-        socketio.emit('connection_error', {'error': str(e)}, broadcast=True)
+        socketio.emit('connection_error', {'error': str(e)})
 
 
 def start_bluetooth_receiver():
