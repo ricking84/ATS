@@ -72,13 +72,15 @@ WEBSOCKET = {
     'timeout_sec': 10,          # Connection timeout
 }
 
-# ===== Bluetooth Configuration =====
+# ===== Bluetooth/BLE Configuration =====
 BLUETOOTH = {
     'enabled': True,
+    'mode': 'ble',
     'service_uuid': '94f39d29-7d6d-437d-973b-fba39e49d4ee',
-    'service_name': 'ATS_SensorData',
-    'baud_rate': 9600,  # For serial Bluetooth modules
-    'port': 1,  # RFCOMM port
+    'characteristic_uuid': '94f39d29-7d6d-437d-973b-fba39e49d4ef',
+    'device_name': 'ATS_Arduino',
+    'baud_rate': 9600,  # Legacy serial Bluetooth modules
+    'port': 1,  # Legacy RFCOMM port
 }
 
 # ===== Data Logging =====

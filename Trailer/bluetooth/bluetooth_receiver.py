@@ -1,78 +1,138 @@
-"""
-Bluetooth receiver for ATS
-Receives sensor data from Arduino/Raspberry Pi via Bluetooth
+"""Bluetooth receiver for ATS.
+
+BLE implementation for ESP32-S3/Nano ESP32 firmware.
 """
 
-import bluetooth
+import asyncio
 import json
 import logging
-from typing import Optional, Dict
+import queue
+import threading
+from typing import Dict, Optional
+
+try:
+    from bleak import BleakClient, BleakScanner
+    _BLEAK_IMPORT_ERROR = None
+except Exception as exc:  # pragma: no cover - handled at runtime
+    BleakClient = None
+    BleakScanner = None
+    _BLEAK_IMPORT_ERROR = exc
 
 logger = logging.getLogger(__name__)
 
 
 class BluetoothReceiver:
-    """Handles Bluetooth communication for sensor data"""
-    
-    def __init__(self, uuid: str = "94f39d29-7d6d-437d-973b-fba39e49d4ee", 
-                 service_name: str = "ATS_SensorData"):
+    """Handles BLE communication for sensor data."""
+
+    def __init__(
+        self,
+        uuid: str = "94f39d29-7d6d-437d-973b-fba39e49d4ee",
+        characteristic_uuid: str = "94f39d29-7d6d-437d-973b-fba39e49d4ef",
+        service_name: str = "ATS_Arduino",
+        scan_timeout: float = 5.0,
+    ):
         """
         Initialize Bluetooth receiver
         
         Args:
-            uuid: Service UUID
-            service_name: Bluetooth service name
+            uuid: BLE service UUID
+            characteristic_uuid: BLE notification characteristic UUID
+            service_name: BLE advertised device name
+            scan_timeout: BLE scan timeout in seconds
         """
+        if _BLEAK_IMPORT_ERROR is not None:
+            raise ImportError(
+                "BLE receiver requires bleak. Install with: pip install bleak"
+            ) from _BLEAK_IMPORT_ERROR
+
         self.uuid = uuid
+        self.characteristic_uuid = characteristic_uuid
         self.service_name = service_name
-        self.server_sock = None
-        self.client_sock = None
+        self.scan_timeout = scan_timeout
         self.is_connected = False
-        
-        self._setup_bluetooth_server()
-    
-    def _setup_bluetooth_server(self):
-        """Setup Bluetooth RFCOMM server"""
+        self._stop_event = threading.Event()
+        self._buffer = ""
+        self._queue: "queue.Queue[Dict]" = queue.Queue(maxsize=200)
+        self._worker_thread = threading.Thread(target=self._worker_main, daemon=True)
+        self._worker_thread.start()
+
+    async def _find_device(self):
+        """Find target BLE device by service UUID or advertised name."""
+        target_uuid = self.uuid.lower()
+
+        def _match(device, adv_data):
+            uuids = [u.lower() for u in (adv_data.service_uuids or [])]
+            if target_uuid in uuids:
+                return True
+            if self.service_name and device.name == self.service_name:
+                return True
+            return False
+
+        return await BleakScanner.find_device_by_filter(_match, timeout=self.scan_timeout)
+
+    def _notification_handler(self, _: int, data: bytearray):
+        """Handle incoming BLE notification chunks and parse NDJSON lines."""
+        text = bytes(data).decode("utf-8", errors="ignore")
+        self._buffer += text
+
+        while "\n" in self._buffer:
+            line, self._buffer = self._buffer.split("\n", 1)
+            line = line.strip()
+            if not line:
+                continue
+
+            try:
+                packet = json.loads(line)
+                try:
+                    self._queue.put_nowait(packet)
+                except queue.Full:
+                    # Drop oldest sample so latest data keeps flowing.
+                    _ = self._queue.get_nowait()
+                    self._queue.put_nowait(packet)
+            except json.JSONDecodeError:
+                logger.debug("Skipping malformed BLE payload chunk: %s", line)
+
+    async def _run_ble_loop(self):
+        """Background BLE scan/connect/subscribe loop."""
+        while not self._stop_event.is_set():
+            device = await self._find_device()
+            if device is None:
+                logger.info("BLE device not found yet; scanning again")
+                await asyncio.sleep(1.0)
+                continue
+
+            try:
+                logger.info("Connecting to BLE device: %s", device.address)
+                async with BleakClient(device) as client:
+                    await client.start_notify(self.characteristic_uuid, self._notification_handler)
+                    self.is_connected = True
+                    logger.info("BLE connected, notifications started")
+
+                    while client.is_connected and not self._stop_event.is_set():
+                        await asyncio.sleep(0.2)
+
+                    if client.is_connected:
+                        await client.stop_notify(self.characteristic_uuid)
+            except Exception as exc:
+                logger.error("BLE connection error: %s", exc)
+            finally:
+                self.is_connected = False
+
+            await asyncio.sleep(1.0)
+
+    def _worker_main(self):
+        """Run BLE asyncio loop in a dedicated worker thread."""
+        loop = asyncio.new_event_loop()
         try:
-            self.server_sock = bluetooth.BluetoothSocket(bluetooth.RFCOMM)
-            self.server_sock.bind(("", bluetooth.PORT_ANY))
-            self.server_sock.listen(1)
-            
-            port = self.server_sock.getsockname()[1]
-            
-            # Advertise the service
-            bluetooth.advertise_service(
-                self.server_sock, 
-                self.service_name,
-                service_id=self.uuid,
-                service_classes=[self.uuid, bluetooth.SERIAL_PORT_CLASS],
-                profiles=[bluetooth.SERIAL_PORT_PROFILE]
-            )
-            
-            logger.info(f'Bluetooth server listening on RFCOMM channel {port}')
-            logger.info(f'Service name: {self.service_name}')
-            logger.info(f'UUID: {self.uuid}')
-            
-        except Exception as e:
-            logger.error(f'Failed to setup Bluetooth server: {e}')
-            raise
-    
-    def _accept_connection(self):
-        """Wait for and accept a Bluetooth connection"""
-        try:
-            logger.info('Waiting for Bluetooth connection...')
-            self.client_sock, client_info = self.server_sock.accept()
-            logger.info(f'Accepted connection from {client_info}')
-            self.is_connected = True
-            
-        except Exception as e:
-            logger.error(f'Failed to accept Bluetooth connection: {e}')
-            self.is_connected = False
-            raise
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(self._run_ble_loop())
+        finally:
+            loop.run_until_complete(loop.shutdown_asyncgens())
+            loop.close()
     
     def receive_sensor_data(self) -> Optional[Dict]:
         """
-        Receive sensor data from Bluetooth
+        Receive sensor data from BLE notifications
         Expected JSON format:
         {
             "timestamp": 1234567890.5,
@@ -87,40 +147,18 @@ class BluetoothReceiver:
         Returns:
             Dictionary with sensor data, or None if no data
         """
-        if not self.is_connected:
-            self._accept_connection()
-        
         try:
-            # Receive data (non-blocking would be better in production)
-            data = self.client_sock.recv(1024)
-            
-            if not data:
-                logger.warning('Connection closed by client')
-                self.is_connected = False
-                return None
-            
-            # Parse JSON
-            sensor_data = json.loads(data.decode('utf-8'))
-            logger.debug(f'Received: {sensor_data}')
-            
-            return sensor_data
-        
-        except json.JSONDecodeError as e:
-            logger.error(f'Invalid JSON received: {e}')
-            return None
-        
-        except OSError as e:
-            logger.error(f'Bluetooth connection error: {e}')
-            self.is_connected = False
+            # Small timeout keeps the app loop responsive.
+            return self._queue.get(timeout=2.0)
+        except queue.Empty:
             return None
     
     def close(self):
-        """Close Bluetooth connections"""
+        """Stop BLE receiver worker thread."""
         try:
-            if self.client_sock:
-                self.client_sock.close()
-            if self.server_sock:
-                self.server_sock.close()
-            logger.info('Bluetooth connection closed')
-        except Exception as e:
-            logger.error(f'Error closing Bluetooth: {e}')
+            self._stop_event.set()
+            if self._worker_thread.is_alive():
+                self._worker_thread.join(timeout=3.0)
+            logger.info('BLE receiver closed')
+        except Exception as exc:
+            logger.error('Error closing BLE receiver: %s', exc)

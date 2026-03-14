@@ -11,6 +11,7 @@ import json
 import logging
 import os
 from datetime import datetime
+from config import BLUETOOTH
 
 # Use simulator for testing if DEMO_MODE is set
 DEMO_MODE = os.getenv('DEMO_MODE', 'True').lower() == 'true'
@@ -87,8 +88,12 @@ def bluetooth_receiver_thread():
     global latest_sensor_data, bt_receiver
     
     try:
-        # Initialize Bluetooth receiver
-        bt_receiver = BluetoothReceiver()
+        # Initialize BLE receiver from config
+        bt_receiver = BluetoothReceiver(
+            uuid=BLUETOOTH.get('service_uuid', '94f39d29-7d6d-437d-973b-fba39e49d4ee'),
+            characteristic_uuid=BLUETOOTH.get('characteristic_uuid', '94f39d29-7d6d-437d-973b-fba39e49d4ef'),
+            service_name=BLUETOOTH.get('device_name', 'ATS_Arduino'),
+        )
         logger.info('Bluetooth receiver initialized')
         
         while True:
