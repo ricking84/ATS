@@ -1,5 +1,5 @@
 ================================================================================
-          ATS - Advanced Trailering System
+          ATS - Automated Trailering System
           GETTING STARTED - READ THIS FIRST
 ================================================================================
 
@@ -259,7 +259,7 @@ LONG-TERM:
 🎉 YOU'RE ALL SET!
 ================================================================================
 
-Your Advanced Trailering System is complete and ready to use!
+Your Automated Trailering System is complete and ready to use!
 
 Next: Open your browser to http://localhost:5000
 

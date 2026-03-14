@@ -338,4 +338,4 @@ Happy trailering! ⛵
 ---
 
 *Last updated: March 2026*
-*ATS v1.0 - Advanced Trailering System*
+*ATS v1.0 - Automated Trailering System*

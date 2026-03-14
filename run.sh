@@ -1,10 +1,10 @@
 #!/bin/bash
 # Quick start script for ATS (Mac/Linux)
-# This script sets up and runs the Advanced Trailering System
+# This script sets up and runs the Automated Trailering System
 
 echo ""
 echo "========================================"
-echo "Advanced Trailering System (ATS)"
+echo "Automated Trailering System (ATS)"
 echo "========================================"
 echo ""
 

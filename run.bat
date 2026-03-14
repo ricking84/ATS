@@ -1,10 +1,10 @@
 @echo off
 REM Quick start script for ATS
-REM This script sets up and runs the Advanced Trailering System
+REM This script sets up and runs the Automated Trailering System
 
 echo.
 echo ========================================
-echo Advanced Trailering System (ATS)
+echo Automated Trailering System (ATS)
 echo ========================================
 echo.
 

@@ -1,4 +1,4 @@
-# ATS - Advanced Trailering System
+# ATS - Automated Trailering System
 
 A real-time visual trailering system with 3D visualization for monitoring boat positioning, water levels, and trailer angle using a web-based dashboard.
 

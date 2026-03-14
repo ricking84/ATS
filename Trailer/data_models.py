@@ -1,5 +1,5 @@
 """
-Data models for ATS (Advanced Trailering System)
+Data models for ATS (Automated Trailering System)
 Defines the sensor data schema and structures
 """
 

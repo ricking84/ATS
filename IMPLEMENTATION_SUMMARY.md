@@ -2,7 +2,7 @@
 
 ## ✅ Completed: Full Visual Trailering System
 
-Your **Advanced Trailering System (ATS)** is now complete and ready to use! This is a production-ready web application for monitoring boat trailer position, water levels, and trailer angle in real-time.
+Your **Automated Trailering System (ATS)** is now complete and ready to use! This is a production-ready web application for monitoring boat trailer position, water levels, and trailer angle in real-time.
 
 ---
 

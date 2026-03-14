@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ATS - Advanced Trailering System</title>
+    <title>ATS - Automated Trailering System</title>
     
     <!-- Three.js library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -16,7 +16,7 @@
     <div class="container">
         <!-- Header -->
         <header class="header">
-            <h1>⛵ Advanced Trailering System (ATS)</h1>
+            <h1>⛵ Automated Trailering System (ATS)</h1>
             <div class="connection-status">
                 <span id="status-indicator" class="status-dot disconnected"></span>
                 <span id="status-text">Disconnected</span>
@@ -27,7 +27,26 @@
             <!-- 3D Visualization Panel -->
             <section class="panel trailer-panel">
                 <h2>Trailer & Boat Position</h2>
-                <div id="canvas-container"></div>
+                <div class="dual-view-container">
+                    <div class="view-section">
+                        <h3>Side View</h3>
+                        <div id="side-view-container" class="canvas-view"></div>
+                    </div>
+                    <div class="view-section">
+                        <h3>Rear View</h3>
+                        <div id="rear-view-container" class="canvas-view"></div>
+                    </div>
+                </div>
+                
+                <!-- Gyro/Angle Info (moved to upper right) -->
+                <div class="gyro-section gyro-overlay">
+                    <div class="gyro-values-compact">
+                        <div>X (Pitch): <span id="gyro-x">0.0°</span></div>
+                        <div>Y (Roll): <span id="gyro-y">0.0°</span></div>
+                        <div>Z (Yaw): <span id="gyro-z">0.0°</span></div>
+                    </div>
+                </div>
+                
                 <div class="trailer-info">
                     <div class="info-item">
                         <label>Trailer Angle:</label>
@@ -79,21 +98,6 @@
                         </div>
                     </div>
                     <div id="distance-status" class="distance-status">—</div>
-                </div>
-                
-                <!-- Gyro/Angle Info -->
-                <div class="gyro-section">
-                    <h3>Trailer Angle (Gyro)</h3>
-                    <div class="gyro-display">
-                        <div class="angle-gauge" id="angle-gauge">
-                            <div id="angle-needle" class="angle-needle"></div>
-                        </div>
-                        <div class="gyro-values">
-                            <div>X (Pitch): <span id="gyro-x">0.0°</span></div>
-                            <div>Y (Roll): <span id="gyro-y">0.0°</span></div>
-                            <div>Z (Yaw): <span id="gyro-z">0.0°</span></div>
-                        </div>
-                    </div>
                 </div>
                 
             </section>

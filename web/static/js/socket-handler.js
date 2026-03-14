@@ -3,24 +3,56 @@
  * Handles real-time communication with the backend
  */
 
+console.log('Socket handler script loaded');
+
 let socket = null;
 let frameCount = 0;
 let lastFrameTime = Date.now();
 let fps = 0;
 
-document.addEventListener('DOMContentLoaded', () => {
+// Initialize socket immediately if DOM is ready, otherwise wait
+if (document.readyState === 'loading') {
+    console.log('DOM still loading, waiting...');
+    document.addEventListener('DOMContentLoaded', initSocket);
+} else {
+    // DOM is already ready since script is at end of body
+    console.log('DOM ready, initializing socket...');
     initSocket();
-});
+}
 
 function initSocket() {
+    console.log('Initializing Socket.IO connection...');
+    
     // Connect to the WebSocket server
-    socket = io();
+    socket = io({
+        transports: ['websocket', 'polling'],
+        reconnection: true,
+        reconnectionDelay: 1000,
+        reconnectionAttempts: 5
+    });
+    
+    console.log('Socket.IO instance created, socket object:', socket);
+    console.log('Socket connected?', socket.connected);
+    
+    // Monitor connection with a timer too
+    setTimeout(() => {
+        console.log('Socket status after 1 second:', socket.connected);
+        if (socket.connected) {
+            console.log('Socket is connected, forcing status update');
+            updateConnectionStatus(true);
+        }
+    }, 1000);
     
     // Connection events
     socket.on('connect', () => {
+        console.log('✅ Connect event fired!');
         console.log('Connected to ATS Backend');
         updateConnectionStatus(true);
-        requestUpdate();
+    });
+    
+    socket.on('connect_error', (error) => {
+        console.error('Connection error:', error);
+        updateConnectionStatus(false);
     });
     
     socket.on('disconnect', () => {
@@ -51,8 +83,12 @@ function initSocket() {
 }
 
 function updateConnectionStatus(connected) {
+    console.log('Updating connection status to:', connected);
     const indicator = document.getElementById('status-indicator');
     const text = document.getElementById('status-text');
+    
+    console.log('Indicator element:', indicator);
+    console.log('Text element:', text);
     
     if (connected) {
         indicator.classList.remove('disconnected');
@@ -146,29 +182,10 @@ function checkBoatAlignment(left, right) {
 }
 
 function updateGyroDisplay(x, y, z) {
-    // Update numeric displays
+    // Update numeric displays in the compact gyro overlay
     document.getElementById('gyro-x').textContent = x.toFixed(1) + '°';
     document.getElementById('gyro-y').textContent = y.toFixed(1) + '°';
     document.getElementById('gyro-z').textContent = z.toFixed(1) + '°';
-    
-    // Update main display
-    document.getElementById('gyro-display').textContent = x.toFixed(1) + '°';
-    
-    // Update angle needle (using X rotation as primary angle)
-    const needle = document.getElementById('angle-needle');
-    needle.style.transform = `translateX(-50%) rotate(${x}deg)`;
-    
-    // Update alignment status - check if level (within tolerance)
-    const tolerance = 5; // degrees
-    const alignmentStatus = document.getElementById('alignment-status');
-    
-    if (Math.abs(x) <= tolerance && Math.abs(y) <= tolerance) {
-        alignmentStatus.textContent = '✓ Level';
-        alignmentStatus.style.color = '#43a047';
-    } else {
-        alignmentStatus.textContent = '⚠️ Tilted';
-        alignmentStatus.style.color = '#fb8c00';
-    }
 }
 
 function updateTimestamp(timestamp) {

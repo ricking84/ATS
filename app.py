@@ -1,5 +1,5 @@
 """
-Flask backend server for ATS (Advanced Trailering System)
+Flask backend server for ATS (Automated Trailering System)
 Handles Bluetooth data collection and WebSocket streaming to frontend
 """
 
@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 # Flask app setup
 app = Flask(__name__, template_folder='web/templates', static_folder='web/static')
 app.config['SECRET_KEY'] = 'ats-secret-key-2026'
-socketio = SocketIO(app, cors_allowed_origins="*")
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading', logger=True, engineio_logger=True)
 
 # Global state
 bt_receiver = None
