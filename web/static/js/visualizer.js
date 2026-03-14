@@ -26,11 +26,14 @@ class TrailerVisualizer {
         this.floatSensor = false;
         this.waterOpacity = 0; // current opacity
         this.targetWaterOpacity = 0; // target opacity for smooth transition
+        this.waterOpacity = 0; // current opacity
+        this.targetWaterOpacity = 0; // target opacity for smooth transition
 
         // Target rotation (radians) and smoothing
         this.targetRotation = new THREE.Euler(0, 0, 0, 'XYZ');
         this.rotationLerp = 0.08; // smoothing factor (0-1)
         this.positionLerp = 0.08; // smoothing for position changes
+        this.waterLerp = 0.05; // water fade in/out smoothing factor
         this.waterLerp = 0.05; // water fade in/out smoothing factor
         this.maxLateralSlide = 0.6; // meters lateral slide left/right
         
