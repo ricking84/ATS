@@ -106,61 +106,41 @@ function handleSensorData(data) {
     
     // Extract sensor values
     const floatSensor = data.float_sensor || false;
-    const waterSensors = data.water_sensors || [false, false, false, false];
     const gyro = data.gyro || { x: 0, y: 0, z: 0 };
     const distance = data.distance || { left: 0, right: 0 };
     
     // Update 3D visualization
     visualizer.updateFloatSensor(floatSensor);
-    visualizer.updateWaterSensors(waterSensors);
     visualizer.updateTrailerAngle(gyro.x, gyro.y, gyro.z);
     
     // Update UI displays
-    updateWaterLevelDisplay(waterSensors);
+    updateWaterLevelDisplay(floatSensor);
     updateDistanceSensorsDisplay(distance.left, distance.right);
     updateGyroDisplay(gyro.x, gyro.y, gyro.z);
     updateTimestamp(data.timestamp);
-    
-    // Check boat alignment
-    checkBoatAlignment(distance.left, distance.right);
     
     // Update FPS
     updateFPS();
 }
 
-function updateWaterLevelDisplay(sensorArray) {
+function updateWaterLevelDisplay(floatActive) {
     const fillElement = document.getElementById('water-fill');
     const statusElement = document.getElementById('water-status');
-    const sensorContainer = document.getElementById('water-sensors');
-    
-    // determine active count
-    let count = 0;
-    if (Array.isArray(sensorArray)) {
-        count = sensorArray.filter(Boolean).length;
-        sensorArray.forEach((active, idx) => {
-            const box = document.getElementById('sensor-' + idx);
-            if (box) {
-                if (active) box.classList.add('active');
-                else box.classList.remove('active');
-            }
-        });
-    }
 
-    const fillHeight = (count / 4) * 100;
-    fillElement.style.height = fillHeight + '%';
-    
-    if (count === 0) {
-        statusElement.textContent = '🏜️ Out of Water';
-        statusElement.classList.remove('in-water');
-        statusElement.classList.add('out-water');
-    } else if (count === 4) {
-        statusElement.textContent = '🌊 FULLY IN WATER';
-        statusElement.classList.add('in-water');
-        statusElement.classList.remove('out-water');
-    } else {
-        statusElement.textContent = '🌊 Partial Contact';
-        statusElement.classList.add('in-water');
-        statusElement.classList.remove('out-water');
+    const active = Boolean(floatActive);
+    const fillHeight = active ? 100 : 0;
+    if (fillElement) fillElement.style.height = fillHeight + '%';
+
+    if (statusElement) {
+        if (active) {
+            statusElement.textContent = '🌊 IN WATER';
+            statusElement.classList.add('in-water');
+            statusElement.classList.remove('out-water');
+        } else {
+            statusElement.textContent = '🏜️ Out of Water';
+            statusElement.classList.remove('in-water');
+            statusElement.classList.add('out-water');
+        }
     }
 }
 
@@ -181,31 +161,42 @@ function updateDistanceSensorsDisplay(left, right) {
     document.getElementById('distance-right-value').textContent = Math.round(right) + ' mm';
 }
 
-function checkBoatAlignment(left, right) {
-    const statusElement = document.getElementById('distance-status');
-    const difference = Math.abs(left - right);
-    const tolerance = 50; // mm
-    
-    if (difference <= tolerance) {
-        statusElement.textContent = '✓ Boat Centered';
-        statusElement.classList.add('centered');
-        statusElement.classList.remove('warning');
-    } else if (difference <= 150) {
-        statusElement.textContent = '⚠️ Slight Offset';
-        statusElement.classList.remove('centered');
-        statusElement.classList.add('warning');
-    } else {
-        statusElement.textContent = '⚠️ Adjust Alignment';
-        statusElement.classList.remove('centered');
-        statusElement.classList.add('warning');
-    }
-}
-
 function updateGyroDisplay(x, y, z) {
-    // Update numeric displays in the compact gyro overlay
-    document.getElementById('gyro-x').textContent = x.toFixed(1) + '°';
-    document.getElementById('gyro-y').textContent = y.toFixed(1) + '°';
-    document.getElementById('gyro-z').textContent = z.toFixed(1) + '°';
+    const epsilon = 0.05;
+
+    const formatDirection = (value, negativeLabel, positiveLabel) => {
+        if (Math.abs(value) < epsilon) {
+            return `Centered: 0°`;
+        }
+
+        const direction = value < 0 ? negativeLabel : positiveLabel;
+        const magnitude = Math.abs(value).toFixed(1);
+        return `${direction}: ${magnitude}°`;
+    };
+
+    const frontBackText = formatDirection(x, 'Forward', 'Back');
+    const leftRightText = formatDirection(y, 'Left', 'Right');
+
+    const sideFrontBack = document.getElementById('side-fb-metric');
+    const sideLeftRight = document.getElementById('side-lr-metric');
+    const rearFrontBack = document.getElementById('rear-fb-metric');
+    const rearLeftRight = document.getElementById('rear-lr-metric');
+
+    if (sideFrontBack) {
+        sideFrontBack.textContent = frontBackText;
+    }
+
+    if (sideLeftRight) {
+        sideLeftRight.textContent = leftRightText;
+    }
+
+    if (rearFrontBack) {
+        rearFrontBack.textContent = frontBackText;
+    }
+
+    if (rearLeftRight) {
+        rearLeftRight.textContent = leftRightText;
+    }
 }
 
 function updateTimestamp(timestamp) {

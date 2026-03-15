@@ -5,7 +5,7 @@
 
 class TrailerVisualizer {
     constructor(sideContainerId, rearContainerId) {
-        this.sideContainer = document.getElementById(sideContainerId);
+        this.sideContainer = sideContainerId ? document.getElementById(sideContainerId) : null;
         this.rearContainer = document.getElementById(rearContainerId);
         this.scene = null;
         this.sideCamera = null;
@@ -48,29 +48,37 @@ class TrailerVisualizer {
         this.scene.background = new THREE.Color(0x1a1f2e);
         
         // Side Camera (from the side)
-        const sideWidth = this.sideContainer.clientWidth;
-        const sideHeight = this.sideContainer.clientHeight;
-        this.sideCamera = new THREE.PerspectiveCamera(75, sideWidth / sideHeight, 0.1, 1000);
-        this.sideCamera.position.set(6, 2, 0); // Side view
-        this.sideCamera.lookAt(0, 0, 0);
+        if (this.sideContainer) {
+            const sideWidth = this.sideContainer.clientWidth;
+            const sideHeight = this.sideContainer.clientHeight;
+            this.sideCamera = new THREE.PerspectiveCamera(75, sideWidth / sideHeight, 0.1, 1000);
+            this.sideCamera.position.set(3, 1.5, 0); // Side view
+            this.sideCamera.lookAt(0, 0, 0);
+        }
         
         // Rear Camera (from the back)
         const rearWidth = this.rearContainer.clientWidth;
         const rearHeight = this.rearContainer.clientHeight;
         this.rearCamera = new THREE.PerspectiveCamera(75, rearWidth / rearHeight, 0.1, 1000);
-        this.rearCamera.position.set(0, 2, -6); // Rear view
+        this.rearCamera.position.set(0, 1.7, -4.6); // Rear view
         this.rearCamera.lookAt(0, 0, 0);
         
         // Side Renderer
-        this.sideRenderer = new THREE.WebGLRenderer({ antialias: true });
-        this.sideRenderer.setSize(sideWidth, sideHeight);
-        this.sideRenderer.shadowMap.enabled = true;
-        this.sideContainer.appendChild(this.sideRenderer.domElement);
+        if (this.sideContainer && this.sideCamera) {
+            const sideWidth = this.sideContainer.clientWidth;
+            const sideHeight = this.sideContainer.clientHeight;
+            this.sideRenderer = new THREE.WebGLRenderer({ antialias: true });
+            this.sideRenderer.setSize(sideWidth, sideHeight);
+            this.sideRenderer.shadowMap.enabled = true;
+            this.sideRenderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+            this.sideContainer.appendChild(this.sideRenderer.domElement);
+        }
         
         // Rear Renderer
         this.rearRenderer = new THREE.WebGLRenderer({ antialias: true });
         this.rearRenderer.setSize(rearWidth, rearHeight);
         this.rearRenderer.shadowMap.enabled = true;
+        this.rearRenderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
         this.rearContainer.appendChild(this.rearRenderer.domElement);
         
         // Lighting
@@ -78,8 +86,6 @@ class TrailerVisualizer {
         
         // Create 3D objects
         this.createTrailer();
-        this.createWater();
-        this.createGround();
         
         // Position trailer so wheels rest on ground at Y = -1.5
         // Wheel center: trailer.y - 0.35, Wheel bottom: trailer.y - 0.35 - 0.35 = trailer.y - 0.7
@@ -271,35 +277,7 @@ class TrailerVisualizer {
     }
 
     
-    createWater() {
-        const waterGeometry = new THREE.PlaneGeometry(50, 50);
-        const waterMaterial = new THREE.MeshPhongMaterial({
-            color: 0x0066ff,
-            transparent: true,
-            opacity: 0.7,
-            side: THREE.DoubleSide
-        });
-        this.water = new THREE.Mesh(waterGeometry, waterMaterial);
-        this.water.rotation.x = -Math.PI / 2;
-        this.water.position.y = -2.0; // Start below markers; will rise during backing simulation
-        this.water.visible = false; // Show only when the first marker is touched
-        this.scene.add(this.water);
-    }
-    
-    createGround() {
-        // Ground plane
-        const groundGeometry = new THREE.PlaneGeometry(20, 20);
-        const groundMaterial = new THREE.MeshPhongMaterial({
-            color: 0x8d6e63,
-            side: THREE.DoubleSide
-        });
-        const ground = new THREE.Mesh(groundGeometry, groundMaterial);
-        ground.rotation.x = -Math.PI / 2;
-        ground.position.y = -1.5;
-        ground.receiveShadow = true;
-        this.ground = ground;
-        this.scene.add(this.ground);
-    }
+
     
     updateTrailerAngle(gyroX, gyroY, gyroZ) {
         // Store latest raw values
@@ -311,9 +289,12 @@ class TrailerVisualizer {
         // Mapping: gyroX -> rotation.x (pitch)
         //          gyroY -> rotation.z (roll)
         //          gyroZ -> rotation.y (yaw)
-        const radX = THREE.MathUtils.degToRad(gyroX);
-        const radY = THREE.MathUtils.degToRad(gyroY);
-        const radZ = THREE.MathUtils.degToRad(gyroZ);
+        // Visual amplification: real sensor angles are small (~1-15 deg),
+        // multiply by 3 so tilt is clearly visible in the 3D view.
+        const visualScale = 3.0;
+        const radX = THREE.MathUtils.degToRad(gyroX * visualScale);
+        const radY = THREE.MathUtils.degToRad(gyroY * visualScale);
+        const radZ = THREE.MathUtils.degToRad(gyroZ * visualScale);
 
         // Invert pitch so positive gyro pitch results in the trailer tilting the other way
         // (keeps the tongue/front anchored visually)
@@ -364,7 +345,6 @@ class TrailerVisualizer {
     
     animate() {
         requestAnimationFrame(() => this.animate());
-        let backingAmount = 0;
 
         // Smoothly interpolate trailer rotation toward targetRotation
         if (this.trailer) {
@@ -373,146 +353,49 @@ class TrailerVisualizer {
             this.trailer.rotation.z = THREE.MathUtils.lerp(this.trailer.rotation.z, this.targetRotation.z, this.rotationLerp);
         }
 
-        // Move trailer along ramp based on pitch (targetRotation.x)
+        // Keep cameras focused on trailer centre
         if (this.trailer && this.trailerBasePosition) {
-            // Map pitch to forward/backward slide along ramp
-            const rampAngle = this.targetRotation.x; // radians
-            const maxSlide = 5.0; // increased backing travel so water can reach top marker in simulation
-            
-            // Compute slide amount: positive pitch (nose up) = slide backward toward water
-            const slide = Math.sin(rampAngle) * maxSlide;
-
-            // Update trailer position
-            // Z: slides along ramp
-            this.trailer.position.z = this.trailerBasePosition.z + slide;
-            
-            // Keep trailer on land plane; water will rise instead of trailer sinking.
-            backingAmount = Math.max(0, -slide);
-            this.trailer.position.y = this.trailerBasePosition.y;
-
-            // Lateral slide based on roll (targetRotation.z)
-            const roll = this.targetRotation.z || 0;
-            const lateralShift = Math.sin(roll) * this.maxLateralSlide;
-            // Smooth lateral movement
-            this.trailer.position.x = THREE.MathUtils.lerp(this.trailer.position.x || 0, this.trailerBasePosition.x + lateralShift, this.positionLerp);
-
-            // Update boat position (now independent from trailer)
-            if (this.boat) {
-                // Calculate boat float depth based on pitch angle
-                // Progressive floating: rear touches first, then lifts as trailer descends further
-                
-                // Calculate water contact level: 0 = on trailer, 1 = fully floating
-                // Boat starts floating when pitch exceeds ~8 degrees
-                const floatThreshold = 0.15; // radians (~8.6 degrees)
-                const maxFloating = 0.9; // radians (~51 degrees)
-                const contactRatio = Math.max(0, Math.min(1, (Math.abs(this.targetRotation.x) - floatThreshold) / (maxFloating - floatThreshold)));
-                
-                // When NOT floating: lock boat firmly to trailer
-                if (contactRatio < 0.05) {
-                    // Boat stays on trailer (no lerp, direct copy)
-                    this.boat.position.x = this.trailer.position.x;
-                    this.boat.position.y = this.trailer.position.y + 0.45;
-                    this.boat.position.z = this.trailer.position.z - 0.6;
-                } else {
-                    // When floating: boat moves away from trailer into water
-                    // Water surface is at Y = -1, boat floats at Y = -0.8 (0.2 above water)
-                    const waterSurfaceY = -1.0;
-                    const boatFloatingY = waterSurfaceY + 0.25;  // higher float clearance
-                    
-                    // Boat moves forward/away from the trailer as it starts to float
-                    // Start position: rear of trailer, End position: center of water
-                    const startZ = this.trailer.position.z - 0.6;
-                    const endZ = this.water.position.z - 0.3;  // move away from ramp
-                    const boatZPos = THREE.MathUtils.lerp(startZ, endZ, contactRatio);
-                    
-                    // Smoothly transition boat position
-                    this.boat.position.x = THREE.MathUtils.lerp(this.boat.position.x, this.trailer.position.x + 0.1, 0.05);
-                    this.boat.position.y = THREE.MathUtils.lerp(this.boat.position.y, boatFloatingY, 0.04);
-                    this.boat.position.z = THREE.MathUtils.lerp(this.boat.position.z, boatZPos, 0.05);
-                }
+            const cx = this.trailer.position.x;
+            const cy = this.trailer.position.y + 0.5;
+            const cz = this.trailer.position.z;
+            this.cameraTarget.set(cx, cy, cz);
+            if (this.sideCamera) {
+                this.sideCamera.position.set(cx + 3, 1.5, cz);
             }
-
-            // Keep cameras focused on trailer
-            this.cameraTarget.set(this.trailer.position.x, this.trailer.position.y + 0.5, this.trailer.position.z);
-            
-            // Update camera positions to follow trailer
-            this.sideCamera.position.set(this.trailer.position.x + 6, 2, this.trailer.position.z);
-            this.rearCamera.position.set(this.trailer.position.x, 2, this.trailer.position.z - 6);
-            
-            this.sideCamera.lookAt(this.cameraTarget);
+            this.rearCamera.position.set(cx, 1.7, cz - 4.6);
+            if (this.sideCamera) {
+                this.sideCamera.lookAt(this.cameraTarget);
+            }
             this.rearCamera.lookAt(this.cameraTarget);
         }
 
-        // Make ground follow trailer horizontally so ramp stays under trailer
-        if (this.ground && this.trailer) {
-            // Move ground in Z to match trailer so the ramp appears beneath the trailer
-            this.ground.position.z = this.trailer.position.z;
-            // Ground Y stays FIXED at -1.5 so trailer wheels rest on it (don't move it down)
-            this.ground.position.y = -1.5;
-            // Align ground X to trailer so lateral slope stays under trailer
-            this.ground.position.x = THREE.MathUtils.lerp(this.ground.position.x || 0, this.trailer.position.x, this.positionLerp);
-        }
-
-        // Make water follow trailer horizontally as well
-        if (this.water && this.trailer) {
-            this.water.position.z = this.trailer.position.z;
-            this.water.position.x = this.trailer.position.x;
-
-            // Raise water as trailer backs down; cap rise when top rear marker is reached.
-            if (this.pylons && this.pylons.length && this.pylons[0].children.length) {
-                const firstPylon = this.pylons[0];
-                const markerYs = firstPylon.children.map(marker => {
-                    const worldPos = new THREE.Vector3();
-                    marker.getWorldPosition(worldPos);
-                    return worldPos.y;
-                }).sort((a, b) => a - b);
-
-                const lowestMarkerY = markerYs[0];
-                const topMarkerY = markerYs[markerYs.length - 1];
-                const startWaterY = lowestMarkerY - 0.25;
-                const riseStart = 0.30; // let trailer back down a bit before simulated float touch
-                const riseDistance = 0.9;
-                const riseT = THREE.MathUtils.clamp((backingAmount - riseStart) / riseDistance, 0, 1);
-                const targetWaterY = THREE.MathUtils.lerp(startWaterY, topMarkerY, riseT);
-
-                this.water.position.y = THREE.MathUtils.lerp(this.water.position.y, targetWaterY, this.waterLerp);
-
-                // Keep water hidden until the waterline reaches the bottom rear pylon marker.
-                const bottomMarkerTouched = this.water.position.y >= lowestMarkerY;
-                this.water.visible = bottomMarkerTouched;
-            }
-        }
-
-        // Make ground subtly respond (inverse small tilt for visual reference)
-        if (this.ground) {
-            // Make ground slope follow trailer pitch so ramp is visible under trailer
-            const groundTargetX = this.targetRotation.x * 0.9; // follow pitch closely
-            const groundTargetZ = -this.targetRotation.z * 0.9; // slope multiplier for roll
-            this.ground.rotation.x = THREE.MathUtils.lerp(this.ground.rotation.x, -Math.PI / 2 + groundTargetX, this.rotationLerp);
-            this.ground.rotation.z = THREE.MathUtils.lerp(this.ground.rotation.z || 0, groundTargetZ, this.rotationLerp);
-        }
-
-        this.checkBoatWaterCollision();
-        
         // Render both views
-        this.sideRenderer.render(this.scene, this.sideCamera);
-        this.rearRenderer.render(this.scene, this.rearCamera);
+        if (this.sideRenderer && this.sideCamera) {
+            this.sideRenderer.render(this.scene, this.sideCamera);
+        }
+        if (this.rearRenderer && this.rearCamera) {
+            this.rearRenderer.render(this.scene, this.rearCamera);
+        }
     }
     
     onWindowResize() {
         // Update side view
-        const sideWidth = this.sideContainer.clientWidth;
-        const sideHeight = this.sideContainer.clientHeight;
-        this.sideCamera.aspect = sideWidth / sideHeight;
-        this.sideCamera.updateProjectionMatrix();
-        this.sideRenderer.setSize(sideWidth, sideHeight);
+        if (this.sideContainer && this.sideCamera && this.sideRenderer) {
+            const sideWidth = this.sideContainer.clientWidth;
+            const sideHeight = this.sideContainer.clientHeight;
+            this.sideCamera.aspect = sideWidth / sideHeight;
+            this.sideCamera.updateProjectionMatrix();
+            this.sideRenderer.setSize(sideWidth, sideHeight);
+        }
         
         // Update rear view
-        const rearWidth = this.rearContainer.clientWidth;
-        const rearHeight = this.rearContainer.clientHeight;
-        this.rearCamera.aspect = rearWidth / rearHeight;
-        this.rearCamera.updateProjectionMatrix();
-        this.rearRenderer.setSize(rearWidth, rearHeight);
+        if (this.rearContainer && this.rearCamera && this.rearRenderer) {
+            const rearWidth = this.rearContainer.clientWidth;
+            const rearHeight = this.rearContainer.clientHeight;
+            this.rearCamera.aspect = rearWidth / rearHeight;
+            this.rearCamera.updateProjectionMatrix();
+            this.rearRenderer.setSize(rearWidth, rearHeight);
+        }
     }
 }
 

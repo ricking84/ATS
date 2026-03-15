@@ -3,7 +3,7 @@ Flask backend server for ATS (Automated Trailering System)
 Handles Bluetooth data collection and WebSocket streaming to frontend
 """
 
-from flask import Flask, render_template, jsonify
+from flask import Flask, render_template, jsonify, Response
 from flask_socketio import SocketIO, emit
 from Trailer.data_models import SensorData
 import threading
@@ -28,6 +28,8 @@ logger = logging.getLogger(__name__)
 # Flask app setup
 app = Flask(__name__, template_folder='web/templates', static_folder='web/static')
 app.config['SECRET_KEY'] = 'ats-secret-key-2026'
+app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
+app.config['TEMPLATES_AUTO_RELOAD'] = True
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading', logger=True, engineio_logger=True)
 
 # Global state
@@ -40,6 +42,21 @@ clients_connected = 0
 def index():
     """Serve the main dashboard"""
     return render_template('index.html')
+
+
+@app.route('/favicon.ico')
+def favicon():
+    """Silence automatic browser favicon requests when using inline favicon in HTML."""
+    return Response(status=204)
+
+
+@app.after_request
+def add_no_cache_headers(response):
+    """Ensure clients always fetch latest dashboard assets during active development/testing."""
+    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    return response
 
 
 @app.route('/api/status')

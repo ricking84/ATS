@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ATS - Automated Trailering System</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⛵</text></svg>">
     
     <!-- Three.js library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -27,34 +28,21 @@
             <!-- 3D Visualization Panel -->
             <section class="panel trailer-panel">
                 <h2>Trailer & Boat Position</h2>
+
                 <div class="dual-view-container">
                     <div class="view-section">
-                        <h3>Side View</h3>
-                        <div id="side-view-container" class="canvas-view"></div>
+                        <div class="view-metric">
+                            <div id="rear-fb-metric">Forward: 0.0°</div>
+                            <div id="rear-lr-metric">Centered: 0°</div>
+                        </div>
+                        <div id="rear-view-container" class="canvas-view rear-canvas"></div>
                     </div>
                     <div class="view-section">
-                        <h3>Rear View</h3>
-                        <div id="rear-view-container" class="canvas-view"></div>
-                    </div>
-                </div>
-                
-                <!-- Gyro/Angle Info (moved to upper right) -->
-                <div class="gyro-section gyro-overlay">
-                    <div class="gyro-values-compact">
-                        <div>X (Pitch): <span id="gyro-x">0.0°</span></div>
-                        <div>Y (Roll): <span id="gyro-y">0.0°</span></div>
-                        <div>Z (Yaw): <span id="gyro-z">0.0°</span></div>
-                    </div>
-                </div>
-                
-                <div class="trailer-info">
-                    <div class="info-item">
-                        <label>Trailer Angle:</label>
-                        <span id="gyro-display">0.0°</span>
-                    </div>
-                    <div class="info-item">
-                        <label>Boat Alignment:</label>
-                        <span id="alignment-status">—</span>
+                        <div class="view-metric">
+                            <div id="side-fb-metric">Forward: 0.0°</div>
+                            <div id="side-lr-metric">Centered: 0°</div>
+                        </div>
+                        <div id="side-view-container" class="canvas-view"></div>
                     </div>
                 </div>
             </section>
@@ -103,7 +91,6 @@
                             <span id="distance-right-value">0 mm</span>
                         </div>
                     </div>
-                    <div id="distance-status" class="distance-status">—</div>
                 </div>
                 
             </section>
